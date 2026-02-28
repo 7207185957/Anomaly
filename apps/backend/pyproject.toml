@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=69.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aiops-backend"
+version = "0.1.0"
+description = "Enterprise AIOps backend API"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "AIOps Team" }]
+dependencies = [
+  "fastapi>=0.116.0",
+  "uvicorn[standard]>=0.35.0",
+  "pydantic-settings>=2.10.0",
+  "pyjwt>=2.10.1",
+  "ldap3>=2.9.1",
+  "requests>=2.32.5",
+  "psycopg2-binary>=2.9.10",
+  "python-dateutil>=2.9.0.post0",
+  "numpy>=2.3.2",
+  "pandas>=2.3.2",
+  "ollama>=0.6.0",
+  "mlflow>=3.4.0",
+  "redis>=6.4.0",
+  "rq>=2.6.0",
+  "nebula3-python>=3.8.3",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.4.2",
+  "httpx>=0.28.1",
+  "ruff>=0.12.10",
+]
+
+[tool.setuptools]
+package-dir = { "" = "." }
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

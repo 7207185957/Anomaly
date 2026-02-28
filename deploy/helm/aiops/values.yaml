@@ -1,0 +1,78 @@
+global:
+  imagePullSecrets: []
+
+backend:
+  replicaCount: 2
+  image:
+    repository: your-registry/aiops-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 9001
+  env:
+    APP_NAME: Enterprise AIOps API
+    ENVIRONMENT: production
+    API_PREFIX: /api/v1
+    CORS_ORIGINS: '["https://aiops.example.com"]'
+    PG_HOST: postgres.internal
+    PG_PORT: "5432"
+    PG_USER: postgres
+    PG_DB: postgres
+    LOKI_URL: http://loki-read:3100/loki/api/v1/query_range
+    OLLAMA_HOST: http://ollama:11434
+    OLLAMA_MODEL: llama3.1:8b
+    LDAP_SERVER: ldap://dwad.prod.aws.amazon.net
+    LDAP_PORT: "389"
+    LDAP_USE_SSL: "false"
+    LDAP_USE_TLS: "false"
+    LDAP_BASE_DN: OU=aws,OU=dwad,DC=dwad,DC=prod,DC=aws,DC=amazon,DC=net
+    LDAP_BIND_DN: CN=svc_jupiter,OU=Service Accounts,OU=aws,OU=dwad,DC=dwad,DC=prod,DC=aws,DC=amazon,DC=net
+    LDAP_AUTH_UID: sAMAccountName
+    LDAP_GROUP_ATTRIBUTE: memberOf
+    LDAP_ADMIN_GROUP_KEYWORD: Admins
+    JWT_ALGORITHM: HS256
+    JWT_EXPIRY_MINUTES: "480"
+    REDIS_URL: redis://aiops-redis:6379/0
+    RCA_QUEUE_NAME: rca-jobs
+  secretEnv:
+    JWT_SECRET_KEY: change-me
+    PG_PASSWORD: change-me
+    LDAP_BIND_PASSWORD: change-me
+    MLFLOW_TRACKING_PASSWORD: ""
+
+frontend:
+  replicaCount: 2
+  image:
+    repository: your-registry/aiops-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3000
+  env:
+    NEXT_PUBLIC_API_BASE_URL: https://aiops.example.com/api/v1
+
+worker:
+  replicaCount: 2
+  image:
+    repository: your-registry/aiops-backend-worker
+    tag: latest
+    pullPolicy: IfNotPresent
+
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: "7-alpine"
+    pullPolicy: IfNotPresent
+  service:
+    port: 6379
+
+ingress:
+  enabled: true
+  className: alb
+  annotations: {}
+  hosts:
+    - aiops.example.com
+

@@ -1,0 +1,42 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
+  backend:
+    image: aiops-backend:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+    ports:
+      - "9001:9001"
+    depends_on:
+      - redis
+
+  worker:
+    image: aiops-worker:latest
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - RCA_QUEUE_NAME=${RCA_QUEUE_NAME:-rca-jobs}
+    depends_on:
+      - redis
+
+  frontend:
+    image: aiops-frontend:latest
+    restart: unless-stopped
+    environment:
+      - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:9001/api/v1}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+

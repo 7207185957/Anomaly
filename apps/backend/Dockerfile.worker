@@ -1,0 +1,15 @@
+FROM python:3.11-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+COPY pyproject.toml /app/pyproject.toml
+COPY app /app/app
+
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir .
+
+CMD ["sh", "-c", "rq worker --url ${REDIS_URL:-redis://redis:6379/0} ${RCA_QUEUE_NAME:-rca-jobs}"]
+

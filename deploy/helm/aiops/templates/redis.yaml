@@ -1,0 +1,34 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "aiops.fullname" . }}-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ include "aiops.fullname" . }}-redis
+  template:
+    metadata:
+      labels:
+        app: {{ include "aiops.fullname" . }}-redis
+    spec:
+      containers:
+        - name: redis
+          image: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+          imagePullPolicy: {{ .Values.redis.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.redis.service.port }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "aiops.fullname" . }}-redis
+spec:
+  selector:
+    app: {{ include "aiops.fullname" . }}-redis
+  ports:
+    - port: {{ .Values.redis.service.port }}
+      targetPort: {{ .Values.redis.service.port }}
+{{- end }}
+

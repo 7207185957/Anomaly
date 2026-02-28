@@ -1,0 +1,67 @@
+# Enterprise AIOps Platform
+
+This repository is a fresh, enterprise-grade rebuild of the previous Streamlit prototype.
+
+## What changed
+
+- Streamlit UI removed and replaced with a modular web product:
+  - **Frontend**: Next.js + TypeScript + MUI + React Query + AG Grid + ECharts
+  - **Backend**: FastAPI modular API with LDAP auth and versioned routes
+- Hardcoded runtime endpoints removed from app code.
+- Added Redis-backed async jobs for expensive RCA generation.
+- Added deployment support for:
+  - Kubernetes/EKS via Helm
+  - Air-gapped EC2 environments
+
+## Repository layout
+
+```text
+apps/
+  backend/   # FastAPI service
+  frontend/  # Next.js application
+deploy/
+  helm/      # Helm chart
+  ec2-airgap/# Offline bundle + install scripts
+scripts/     # Utility scripts
+```
+
+## Why Redis is used
+
+Redis is used as the queue backend for long-running jobs (for example LLM-based RCA/report generation).
+
+Benefits:
+- user requests return immediately with `job_id`
+- UI remains responsive and independent per module
+- expensive tasks do not block health/log/topology APIs
+- scales horizontally by running more workers
+
+## Backend API (v1)
+
+- `POST /api/v1/auth/login`
+- `GET /api/v1/auth/me`
+- `POST /api/v1/summaries/combined`
+- `POST /api/v1/cluster/health`
+- `POST /api/v1/logs/query`
+- `POST /api/v1/topology/graph`
+- `POST /api/v1/jobs/rca`
+- `GET /api/v1/jobs/{job_id}`
+
+## Local run (docker compose)
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
+Services:
+- Frontend: http://localhost:3000
+- Backend: http://localhost:9001
+
+## Air-gapped EC2 deployment
+
+See `deploy/ec2-airgap/README.md` for offline packaging and installation flow.
+
+## Kubernetes/EKS
+
+See `deploy/helm/aiops/` for Helm chart and values.
+

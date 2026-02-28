@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "aiops.fullname" . }}-worker
+spec:
+  replicas: {{ .Values.worker.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "aiops.fullname" . }}-worker
+  template:
+    metadata:
+      labels:
+        app: {{ include "aiops.fullname" . }}-worker
+    spec:
+      containers:
+        - name: worker
+          image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+          imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
+          command: ["rq", "worker", "rca-jobs"]
+          envFrom:
+            - configMapRef:
+                name: {{ include "aiops.fullname" . }}-backend-config
+            - secretRef:
+                name: {{ include "aiops.fullname" . }}-backend-secret
+
