@@ -56,6 +56,7 @@ docker compose up --build
 Services:
 - Frontend: http://localhost:3000
 - Backend: http://localhost:9001
+- Redis is internal-only in Docker network (no host 6379 bind by default)
 
 ## Cloud agent environment bootstrap
 
