@@ -83,6 +83,22 @@ class Settings(BaseSettings):
                 return bool_map[lowered]
         return value
 
+    @field_validator("api_prefix", mode="before")
+    @classmethod
+    def normalize_api_prefix(cls, value):
+        if value is None:
+            return "/api/v1"
+        if isinstance(value, str):
+            text = value.strip()
+            if len(text) >= 2 and ((text[0] == '"' and text[-1] == '"') or (text[0] == "'" and text[-1] == "'")):
+                text = text[1:-1].strip()
+            if not text:
+                return "/api/v1"
+            if not text.startswith("/"):
+                text = "/" + text
+            return text
+        return value
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
