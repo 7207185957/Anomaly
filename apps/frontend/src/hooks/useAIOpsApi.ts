@@ -4,6 +4,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/lib/api";
 import {
+  AuthModeResponse,
   ClusterHealthResponse,
   CombinedSummaryResponse,
   JobStatusResponse,
@@ -29,6 +30,16 @@ export const useCurrentUser = (enabled = true) =>
     queryFn: async () => {
       const { data } = await api.get("/auth/me");
       return data as { username: string; display_name: string; groups: string[]; is_admin: boolean };
+    },
+    staleTime: 60_000,
+  });
+
+export const useAuthMode = () =>
+  useQuery({
+    queryKey: ["auth", "mode"],
+    queryFn: async () => {
+      const { data } = await api.get<AuthModeResponse>("/auth/mode");
+      return data;
     },
     staleTime: 60_000,
   });

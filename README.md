@@ -66,6 +66,14 @@ BACKEND_HOST_PORT=9002
 NEXT_PUBLIC_API_BASE_URL=http://localhost:9002/api/v1
 ```
 
+Important: `NEXT_PUBLIC_*` variables are embedded into the frontend at build-time.
+After changing them, rebuild the frontend image:
+
+```bash
+docker compose build frontend
+docker compose up -d
+```
+
 ## Cloud agent environment bootstrap
 
 Use these scripts in cloud/onboarding setup so dependencies are preinstalled once:

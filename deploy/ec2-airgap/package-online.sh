@@ -10,7 +10,12 @@ mkdir -p "${IMAGES_DIR}"
 echo "[1/5] Building docker images"
 docker build -t aiops-backend:offline "${ROOT_DIR}/apps/backend" -f "${ROOT_DIR}/apps/backend/Dockerfile"
 docker build -t aiops-worker:offline "${ROOT_DIR}/apps/backend" -f "${ROOT_DIR}/apps/backend/Dockerfile.worker"
-docker build -t aiops-frontend:offline "${ROOT_DIR}/apps/frontend" -f "${ROOT_DIR}/apps/frontend/Dockerfile"
+docker build \
+  --build-arg NEXT_PUBLIC_API_BASE_URL="${NEXT_PUBLIC_API_BASE_URL:-http://localhost:9001/api/v1}" \
+  --build-arg NEXT_PUBLIC_DEMO_MODE="${NEXT_PUBLIC_DEMO_MODE:-false}" \
+  --build-arg NEXT_PUBLIC_DEMO_USERNAME="${NEXT_PUBLIC_DEMO_USERNAME:-demo}" \
+  --build-arg NEXT_PUBLIC_DEMO_PASSWORD="${NEXT_PUBLIC_DEMO_PASSWORD:-demo123}" \
+  -t aiops-frontend:offline "${ROOT_DIR}/apps/frontend" -f "${ROOT_DIR}/apps/frontend/Dockerfile"
 docker pull redis:7-alpine
 
 echo "[2/5] Saving images as tar archives"

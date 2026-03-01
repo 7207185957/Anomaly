@@ -13,6 +13,11 @@ export type LoginResponse = {
   groups: string[];
 };
 
+export type AuthModeResponse = {
+  demo_mode: boolean;
+  demo_username_hint?: string | null;
+};
+
 export type ClusterHealthResponse = {
   keyword: string;
   health_score: number;
