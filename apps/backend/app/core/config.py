@@ -83,6 +83,27 @@ class Settings(BaseSettings):
                 return bool_map[lowered]
         return value
 
+    @field_validator(
+        "demo_username",
+        "demo_password",
+        "ldap_bind_password",
+        "ldap_server",
+        "ldap_base_dn",
+        "ldap_bind_dn",
+        mode="before",
+    )
+    @classmethod
+    def strip_wrapping_quotes(cls, value):
+        if isinstance(value, str):
+            text = value.strip()
+            if len(text) >= 2 and (
+                (text[0] == '"' and text[-1] == '"')
+                or (text[0] == "'" and text[-1] == "'")
+            ):
+                return text[1:-1].strip()
+            return text
+        return value
+
     @field_validator("api_prefix", mode="before")
     @classmethod
     def normalize_api_prefix(cls, value):
