@@ -80,6 +80,9 @@ Also keep booleans in `.env` unquoted (for example `LDAP_USE_SSL=false`, not `LD
 Incidents data source is backend-owned; frontend no longer reads Postgres directly.
 If incidents live in a separate DB from health/anomaly tables, set `INCIDENT_PG_*` variables.
 
+RCA worker note: MLflow logging is best-effort. If your tracking artifact store requires S3 and `boto3` is not
+available, RCA generation still completes and only the failing MLflow artifact logs are skipped.
+
 ## Cloud agent environment bootstrap
 
 Use these scripts in cloud/onboarding setup so dependencies are preinstalled once:

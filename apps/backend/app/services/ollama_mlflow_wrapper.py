@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 import json
+import logging
 import os
 import time
 from datetime import datetime, timezone
@@ -14,13 +16,33 @@ try:
 except Exception:  # pragma: no cover
     pd = None
 
+logger = logging.getLogger(__name__)
+
+
+def _safe_mlflow_call(action: str, fn, *args, **kwargs):  # type: ignore[no-untyped-def]
+    try:
+        return fn(*args, **kwargs)
+    except ModuleNotFoundError as exc:
+        if str(exc) == "No module named 'boto3'":
+            logger.warning("Skipping MLflow %s because boto3 is unavailable", action)
+            return None
+        raise
+    except Exception as exc:  # pragma: no cover
+        logger.warning("Skipping MLflow %s due to error: %s", action, exc)
+        return None
+
+
+def _start_mlflow_run(run_name: str | None):
+    run_ctx = _safe_mlflow_call("start_run", mlflow.start_run, run_name=run_name, nested=True)
+    return run_ctx if run_ctx is not None else nullcontext()
+
 
 def configure_mlflow() -> None:
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI")
     if tracking_uri:
-        mlflow.set_tracking_uri(tracking_uri)
+        _safe_mlflow_call("set_tracking_uri", mlflow.set_tracking_uri, tracking_uri)
     experiment_name = os.getenv("MLFLOW_EXPERIMENT", "wcs-dataops-mlflow/dataops/infra-anomalies")
-    mlflow.set_experiment(experiment_name)
+    _safe_mlflow_call("set_experiment", mlflow.set_experiment, experiment_name)
 
 
 def _safe_json(obj: Any) -> str:
@@ -115,12 +137,12 @@ def _log_postgres_dataset(
             indent=2,
         )
 
-    mlflow.log_artifact(snap_path, artifact_path="datasets")
-    mlflow.log_artifact(meta_path, artifact_path="datasets")
+    _safe_mlflow_call("log_artifact(snapshot)", mlflow.log_artifact, snap_path, artifact_path="datasets")
+    _safe_mlflow_call("log_artifact(metadata)", mlflow.log_artifact, meta_path, artifact_path="datasets")
     if pd is not None and hasattr(mlflow, "log_input") and hasattr(mlflow, "data"):
         frame = pd.DataFrame([_flatten_row(r) for r in rows]) if rows else pd.DataFrame([{"note": "empty"}])
         ds = mlflow.data.from_pandas(frame, source=snap_path, name=name)
-        mlflow.log_input(ds, context="inference")
+        _safe_mlflow_call("log_input", mlflow.log_input, ds, context="inference")
 
 
 def ollama_chat_with_mlflow(
@@ -150,12 +172,12 @@ def ollama_chat_with_mlflow(
         **(options or {}),
     }
 
-    with mlflow.start_run(run_name=run_name, nested=True):
+    with _start_mlflow_run(run_name):
         if tags:
-            mlflow.set_tags(tags)
-        mlflow.log_param("ollama_model", model)
+            _safe_mlflow_call("set_tags", mlflow.set_tags, tags)
+        _safe_mlflow_call("log_param(ollama_model)", mlflow.log_param, "ollama_model", model)
         for k, v in merged_options.items():
-            mlflow.log_param(f"ollama_{k}", v)
+            _safe_mlflow_call("log_param(options)", mlflow.log_param, f"ollama_{k}", v)
 
         if log_dataset:
             ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -164,7 +186,7 @@ def ollama_chat_with_mlflow(
             with open(jsonl_path, "w", encoding="utf-8") as f:
                 for idx, m in enumerate(messages):
                     f.write(json.dumps({"idx": idx, **m}, ensure_ascii=False) + "\n")
-            mlflow.log_artifact(jsonl_path, artifact_path="datasets")
+            _safe_mlflow_call("log_artifact(messages)", mlflow.log_artifact, jsonl_path, artifact_path="datasets")
 
         if log_postgres_dataset:
             _log_postgres_dataset(
@@ -183,16 +205,16 @@ def ollama_chat_with_mlflow(
         content = _extract_content(resp)
         stats = _extract_stats(resp)
 
-        mlflow.log_metric("latency_seconds", latency)
+        _safe_mlflow_call("log_metric(latency_seconds)", mlflow.log_metric, "latency_seconds", latency)
         if stats.get("prompt_eval_count") is not None:
-            mlflow.log_metric("input_tokens", float(stats["prompt_eval_count"]))
+            _safe_mlflow_call("log_metric(input_tokens)", mlflow.log_metric, "input_tokens", float(stats["prompt_eval_count"]))
         if stats.get("eval_count") is not None:
-            mlflow.log_metric("output_tokens", float(stats["eval_count"]))
+            _safe_mlflow_call("log_metric(output_tokens)", mlflow.log_metric, "output_tokens", float(stats["eval_count"]))
         for key in ("prompt_eval_duration", "eval_duration", "total_duration", "load_duration"):
             if stats.get(key) is not None:
-                mlflow.log_metric(key, float(stats[key]))
+                _safe_mlflow_call(f"log_metric({key})", mlflow.log_metric, key, float(stats[key]))
 
-        mlflow.log_text(_safe_json(messages), artifact_file="prompt.json")
-        mlflow.log_text(content, artifact_file="response.txt")
+        _safe_mlflow_call("log_text(prompt)", mlflow.log_text, _safe_json(messages), artifact_file="prompt.json")
+        _safe_mlflow_call("log_text(response)", mlflow.log_text, content, artifact_file="response.txt")
         return {"content": content, "stats": stats, "raw": resp.model_dump() if hasattr(resp, "model_dump") else resp}
 
