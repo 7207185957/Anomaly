@@ -74,6 +74,8 @@ docker compose build frontend
 docker compose up -d
 ```
 
+Also keep booleans in `.env` unquoted (for example `LDAP_USE_SSL=false`, not `LDAP_USE_SSL="false"`).
+
 ## Cloud agent environment bootstrap
 
 Use these scripts in cloud/onboarding setup so dependencies are preinstalled once:

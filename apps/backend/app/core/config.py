@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -60,6 +60,28 @@ class Settings(BaseSettings):
     demo_password: str = "demo123"
     demo_display_name: str = "AIOps Demo User"
     demo_groups: list[str] = Field(default_factory=lambda: ["AIOps-Demo", "Admins"])
+
+    @field_validator("ldap_use_ssl", "ldap_use_tls", "demo_mode", mode="before")
+    @classmethod
+    def parse_bool_env(cls, value):
+        if isinstance(value, str):
+            text = value.strip()
+            if len(text) >= 2 and ((text[0] == '"' and text[-1] == '"') or (text[0] == "'" and text[-1] == "'")):
+                text = text[1:-1].strip()
+            lowered = text.lower()
+            bool_map = {
+                "true": True,
+                "false": False,
+                "1": True,
+                "0": False,
+                "yes": True,
+                "no": False,
+                "on": True,
+                "off": False,
+            }
+            if lowered in bool_map:
+                return bool_map[lowered]
+        return value
 
 
 @lru_cache(maxsize=1)
