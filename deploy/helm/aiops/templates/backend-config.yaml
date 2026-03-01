@@ -16,5 +16,6 @@ stringData:
   JWT_SECRET_KEY: {{ .Values.backend.secretEnv.JWT_SECRET_KEY | quote }}
   PG_PASSWORD: {{ .Values.backend.secretEnv.PG_PASSWORD | quote }}
   LDAP_BIND_PASSWORD: {{ .Values.backend.secretEnv.LDAP_BIND_PASSWORD | quote }}
+  DEMO_PASSWORD: {{ .Values.backend.secretEnv.DEMO_PASSWORD | quote }}
   MLFLOW_TRACKING_PASSWORD: {{ .Values.backend.secretEnv.MLFLOW_TRACKING_PASSWORD | quote }}
 

@@ -8,6 +8,7 @@ import utc from "dayjs/plugin/utc";
 
 import { TimeWindowControls, WindowState } from "@/components/common/TimeWindowControls";
 import { AppShell, DashboardSection } from "@/components/layout/AppShell";
+import { env } from "@/config/env";
 import { useCurrentUser } from "@/hooks/useAIOpsApi";
 import { clearAccessToken, getAccessToken } from "@/lib/auth";
 import { AlertsModule } from "@/modules/alerts/AlertsModule";
@@ -80,6 +81,12 @@ export default function Home() {
             <TimeWindowControls value={windowState} onChange={setWindowState} />
           </CardContent>
         </Card>
+
+        {env.demoMode && (
+          <Alert severity="info">
+            Demo mode is enabled. Data in all sections is synthetic and safe for walkthroughs.
+          </Alert>
+        )}
 
         {me.isError && (
           <Alert severity="error">

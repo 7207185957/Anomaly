@@ -13,6 +13,14 @@ Configure the backend base URL:
 NEXT_PUBLIC_API_BASE_URL=http://localhost:9001/api/v1
 ```
 
+Optional demo mode:
+
+```bash
+NEXT_PUBLIC_DEMO_MODE=true
+NEXT_PUBLIC_DEMO_USERNAME=demo
+NEXT_PUBLIC_DEMO_PASSWORD=demo123
+```
+
 ## Features
 
 - LDAP-based sign in flow

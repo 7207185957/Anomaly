@@ -55,6 +55,12 @@ class Settings(BaseSettings):
 
     frontend_base_url: str = "http://localhost:3000"
 
+    demo_mode: bool = False
+    demo_username: str = "demo"
+    demo_password: str = "demo123"
+    demo_display_name: str = "AIOps Demo User"
+    demo_groups: list[str] = Field(default_factory=lambda: ["AIOps-Demo", "Admins"])
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

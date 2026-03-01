@@ -33,12 +33,17 @@ backend:
     LDAP_ADMIN_GROUP_KEYWORD: Admins
     JWT_ALGORITHM: HS256
     JWT_EXPIRY_MINUTES: "480"
+    DEMO_MODE: "false"
+    DEMO_USERNAME: demo
+    DEMO_DISPLAY_NAME: AIOps Demo User
+    DEMO_GROUPS: '["AIOps-Demo","Admins"]'
     REDIS_URL: redis://aiops-redis:6379/0
     RCA_QUEUE_NAME: rca-jobs
   secretEnv:
     JWT_SECRET_KEY: change-me
     PG_PASSWORD: change-me
     LDAP_BIND_PASSWORD: change-me
+    DEMO_PASSWORD: demo123
     MLFLOW_TRACKING_PASSWORD: ""
 
 frontend:
@@ -52,6 +57,9 @@ frontend:
     port: 3000
   env:
     NEXT_PUBLIC_API_BASE_URL: https://aiops.example.com/api/v1
+    NEXT_PUBLIC_DEMO_MODE: "false"
+    NEXT_PUBLIC_DEMO_USERNAME: demo
+    NEXT_PUBLIC_DEMO_PASSWORD: demo123
 
 worker:
   replicaCount: 2

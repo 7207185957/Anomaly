@@ -35,6 +35,9 @@ services:
     restart: unless-stopped
     environment:
       - NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-http://localhost:9001/api/v1}
+      - NEXT_PUBLIC_DEMO_MODE=${NEXT_PUBLIC_DEMO_MODE:-false}
+      - NEXT_PUBLIC_DEMO_USERNAME=${NEXT_PUBLIC_DEMO_USERNAME:-demo}
+      - NEXT_PUBLIC_DEMO_PASSWORD=${NEXT_PUBLIC_DEMO_PASSWORD:-demo123}
     ports:
       - "3000:3000"
     depends_on:

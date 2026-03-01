@@ -19,8 +19,10 @@ from app.domain.health import (
     top_metrics_causing_dip,
     trim_rows_to_requested_window,
 )
+from app.core.config import get_settings
 from app.repositories.postgres_repository import PostgresRepository
 from app.schemas.summary import SummaryRequest
+from app.services.demo_data_service import DemoDataService
 from app.services.llm_service import LlmService
 from app.services.loki_service import LokiService
 
@@ -31,6 +33,13 @@ Q_APP = '{job="promtail", service=~"rabbitmq-log|airflow-scheduler-log"} |= "err
 
 class SummaryService:
     def __init__(self) -> None:
+        self.settings = get_settings()
+        self.demo = DemoDataService()
+        if self.settings.demo_mode:
+            self.pg = None
+            self.loki = None
+            self.llm = None
+            return
         self.pg = PostgresRepository()
         self.loki = LokiService()
         self.llm = LlmService()
@@ -63,6 +72,9 @@ class SummaryService:
         return pg_source, pg_tables, query_ctx, snapshot
 
     def get_combined_summary(self, req: SummaryRequest) -> dict[str, Any]:
+        if self.settings.demo_mode:
+            return self.demo.get_combined_summary(req)
+
         keyword = req.keyword.strip()
         since_req, end_ts = resolve_time_window(req)
         sig_window_min = 15
@@ -207,6 +219,9 @@ class SummaryService:
         }
 
     def get_cluster_health(self, req: SummaryRequest) -> dict[str, Any]:
+        if self.settings.demo_mode:
+            return self.demo.get_cluster_health(req)
+
         keyword = req.keyword.strip()
         since_req, end_ts = resolve_time_window(req)
         sig_window_min = 15

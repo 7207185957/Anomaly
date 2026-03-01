@@ -20,3 +20,8 @@ class UserInfo(BaseModel):
     groups: list[str]
     is_admin: bool
 
+
+class AuthModeResponse(BaseModel):
+    demo_mode: bool
+    demo_username_hint: str | None = None
+

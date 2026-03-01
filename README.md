@@ -57,6 +57,24 @@ Services:
 - Frontend: http://localhost:3000
 - Backend: http://localhost:9001
 
+## Demo mode (Option 2)
+
+Set these in `.env`:
+
+```bash
+DEMO_MODE=true
+DEMO_USERNAME=demo
+DEMO_PASSWORD=demo123
+NEXT_PUBLIC_DEMO_MODE=true
+NEXT_PUBLIC_DEMO_USERNAME=demo
+NEXT_PUBLIC_DEMO_PASSWORD=demo123
+```
+
+In demo mode:
+- login is local (no LDAP dependency)
+- health/alerts/incidents/logs/topology use synthetic realistic data
+- RCA jobs are simulated and complete quickly
+
 ## Air-gapped EC2 deployment
 
 See `deploy/ec2-airgap/README.md` for offline packaging and installation flow.
