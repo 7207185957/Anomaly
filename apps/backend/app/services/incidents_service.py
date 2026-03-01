@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.core.config import get_settings
@@ -15,15 +14,6 @@ class IncidentsService:
         self.settings = get_settings()
         self.repo = PostgresRepository()
         self.demo = DemoDataService()
-
-    @staticmethod
-    def _window(req: IncidentsRequest) -> tuple[datetime, datetime]:
-        now = datetime.now(timezone.utc)
-        since = req.start_utc.astimezone(timezone.utc) if req.start_utc else now - timedelta(hours=req.lookback_hours)
-        end_ts = req.end_utc.astimezone(timezone.utc) if req.end_utc else now
-        if since > end_ts:
-            since, end_ts = end_ts, since
-        return since, end_ts
 
     @staticmethod
     def _summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -41,13 +31,16 @@ class IncidentsService:
         }
 
     def list_incidents(self, req: IncidentsRequest) -> dict[str, Any]:
-        since, end_ts = self._window(req)
+        # Incidents are intentionally independent of keyword/time controls.
+        # This keeps incident command view stable even when dashboard filters change.
+        since = None
+        end_ts = None
         team_name = req.team_name or self.settings.incident_team_name
 
         if self.settings.demo_mode:
             rows = self.demo.list_incidents(
                 team_name=team_name,
-                keyword=req.keyword,
+                keyword=None,
                 since=since,
                 end=end_ts,
                 include_resolved=req.include_resolved,
@@ -55,7 +48,7 @@ class IncidentsService:
         else:
             rows = self.repo.fetch_open_incidents(
                 team_name=team_name,
-                keyword=req.keyword,
+                keyword=None,
                 since_ts=since,
                 until_ts=end_ts,
                 include_resolved=req.include_resolved,
@@ -63,7 +56,7 @@ class IncidentsService:
 
         return {
             "team_name": team_name,
-            "keyword": req.keyword,
+            "keyword": None,
             "since_utc": since,
             "until_utc": end_ts,
             "count": len(rows),

@@ -95,7 +95,7 @@ export default function Home() {
         )}
 
         {section === "incidents" && <IncidentsModule payload={payload} enabled />}
-        {section === "alerts" && <AlertsModule payload={payload} enabled={keywordReady} />}
+        {section === "alerts" && <AlertsModule payload={payload} enabled />}
         {section === "health" && <HealthModule payload={payload} enabled={keywordReady} />}
         {section === "logs" && <LogsModule payload={payload} enabled={keywordReady} />}
         {section === "topology" && (

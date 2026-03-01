@@ -17,10 +17,6 @@ export function IncidentsModule({ payload, enabled }: Props) {
   const incidentsQuery = useOpenIncidents(
     {
       include_resolved: false,
-      keyword: payload.keyword || undefined,
-      lookback_hours: payload.lookback_hours,
-      start_utc: payload.start_utc,
-      end_utc: payload.end_utc,
     },
     enabled,
   );
@@ -106,6 +102,9 @@ export function IncidentsModule({ payload, enabled }: Props) {
             <Typography variant="h6" sx={{ mb: 1 }}>
               Live Incidents (Backend-sourced)
             </Typography>
+            <Alert severity="info" sx={{ mb: 1 }}>
+              Incident data is intentionally independent of keyword and time-window filters.
+            </Alert>
             <div className="ag-theme-alpine-dark" style={{ height: 370, width: "100%" }}>
               <AgGridReact rowData={incidentRows} columnDefs={incidentCols} />
             </div>

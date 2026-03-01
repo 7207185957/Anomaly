@@ -306,11 +306,12 @@ class DemoDataService:
         *,
         team_name: str | None,
         keyword: str | None,
-        since: datetime,
-        end: datetime,
+        since: datetime | None,
+        end: datetime | None,
         include_resolved: bool,
     ) -> list[dict[str, Any]]:
-        base_time = end - timedelta(minutes=80)
+        anchor = end or datetime.now(timezone.utc)
+        base_time = anchor - timedelta(minutes=80)
         rows = [
             {
                 "incident_id": "INC-DEMO-201",
@@ -352,7 +353,9 @@ class DemoDataService:
         filtered = []
         for row in rows:
             st = datetime.fromisoformat(row["start_time"]).astimezone(timezone.utc)
-            if st < since or st > end:
+            if since and st < since:
+                continue
+            if end and st > end:
                 continue
             if not include_resolved and str(row.get("status", "")).lower() in {"resolved", "closed"}:
                 continue

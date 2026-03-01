@@ -8,7 +8,7 @@ class IncidentsRequest(BaseModel):
     team_name: str | None = None
     keyword: str | None = None
     include_resolved: bool = False
-    lookback_hours: int = Field(default=24, ge=1, le=168)
+    lookback_hours: int | None = Field(default=None, ge=1, le=168)
     start_utc: datetime | None = None
     end_utc: datetime | None = None
 
@@ -16,8 +16,8 @@ class IncidentsRequest(BaseModel):
 class IncidentsResponse(BaseModel):
     team_name: str | None
     keyword: str | None
-    since_utc: datetime
-    until_utc: datetime
+    since_utc: datetime | None = None
+    until_utc: datetime | None = None
     count: int
     incidents: list[dict[str, Any]]
     summary: dict[str, Any]

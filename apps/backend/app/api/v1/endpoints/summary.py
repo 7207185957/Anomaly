@@ -25,8 +25,5 @@ def cluster_health(
     _: AuthContext = Depends(require_auth),
     service: SummaryService = Depends(get_summary_service),
 ):
-    keyword = req.keyword.strip()
-    if not keyword:
-        raise HTTPException(status_code=400, detail="Keyword required")
     return service.get_cluster_health(req)
 

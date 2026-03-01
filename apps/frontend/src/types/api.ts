@@ -86,8 +86,8 @@ export type CombinedSummaryResponse = {
 export type OpenIncidentsResponse = {
   team_name?: string | null;
   keyword?: string | null;
-  since_utc: string;
-  until_utc: string;
+  since_utc?: string | null;
+  until_utc?: string | null;
   count: number;
   incidents: Array<{
     incident_id?: string;
