@@ -10,6 +10,7 @@ from app.domain.health import (
     cluster_score_from_timeline,
     collapse_grouped_counts_to_global,
     compute_component_health_scores,
+    compute_asset_health_statistical_with_contributors,
     compute_health_failure_timeline,
     extend_start_for_signature,
     resolve_time_window,
@@ -88,7 +89,14 @@ class SummaryService:
             f_relationships = ex.submit(self.pg.fetch_relationships, asset_ids)
             f_infra = ex.submit(self.pg.fetch_infra_anomalies, asset_ids, since_calc, end_ts)
             f_app = ex.submit(self.pg.fetch_app_anomalies, asset_ids, since_calc, end_ts)
-            f_incidents = ex.submit(self.pg.fetch_incidents, keyword, since_calc, end_ts)
+            f_incidents = ex.submit(
+                self.pg.fetch_open_incidents,
+                team_name=self.settings.incident_team_name,
+                keyword=keyword,
+                since_ts=since_calc,
+                until_ts=end_ts,
+                include_resolved=False,
+            )
             f_app_logs_by_host = ex.submit(self.loki.query_count_per_minute_by_host_ip, logql=Q_APP, start_dt=since_calc, end_dt=end_ts)
             f_dag_logs_by_host = ex.submit(self.loki.query_count_per_minute_by_host_ip, logql=Q_DAG, start_dt=since_calc, end_dt=end_ts)
 
@@ -180,6 +188,37 @@ class SummaryService:
             pg_snapshot=pg_snapshot,
         )
 
+        asset_health_timeline = compute_asset_health_statistical_with_contributors(
+            assets,
+            combined_anoms,
+            app_log_counts_by_host_ip=app_logs_by_host,
+            dag_log_counts_by_host_ip=dag_logs_by_host,
+            start=since_calc,
+            end=end_ts,
+            alpha=0.30,
+            top_n=3,
+        )
+        asset_health_timeline_infra = compute_asset_health_statistical_with_contributors(
+            assets,
+            infra_anoms,
+            app_log_counts_by_host_ip={},
+            dag_log_counts_by_host_ip={},
+            start=since_calc,
+            end=end_ts,
+            alpha=0.30,
+            top_n=3,
+        )
+        asset_health_timeline_app = compute_asset_health_statistical_with_contributors(
+            assets,
+            app_anoms,
+            app_log_counts_by_host_ip=app_logs_by_host,
+            dag_log_counts_by_host_ip=dag_logs_by_host,
+            start=since_calc,
+            end=end_ts,
+            alpha=0.30,
+            top_n=3,
+        )
+
         return {
             "keyword": keyword,
             "lookback_hours": req.lookback_hours,
@@ -202,10 +241,12 @@ class SummaryService:
             "infra_only": {
                 "cluster_health": cluster_score_from_timeline(infra_trim, window_minutes=sig_window_min, mode="p10"),
                 "health_failure_timeline": infra_trim,
+                "asset_health_timeline": asset_health_timeline_infra,
             },
             "app_only": {
                 "cluster_health": cluster_score_from_timeline(app_trim, window_minutes=sig_window_min, mode="p10"),
                 "health_failure_timeline": app_trim,
+                "asset_health_timeline": asset_health_timeline_app,
             },
             "app_log_error_count": int(sum(app_log_counts.values())) if app_log_counts else 0,
             "dag_log_error_count": int(sum(dag_log_counts.values())) if dag_log_counts else 0,
@@ -213,6 +254,7 @@ class SummaryService:
             "cluster_health": cluster_score_from_timeline(combined_trim, window_minutes=sig_window_min, mode="p10"),
             "incident_timeline": timeline,
             "health_failure_timeline": combined_trim,
+            "asset_health_timeline": asset_health_timeline,
             "health_signature": signature_block_from_timeline(combined_trim, window_minutes=sig_window_min),
             "summary": "",
             "rca": rca,
@@ -261,9 +303,62 @@ class SummaryService:
             app_log_counts=app_log_counts,
             dag_log_counts=dag_log_counts,
         )
+        infra_hf = compute_health_failure_timeline(
+            infra_anoms,
+            [],
+            None,
+            start=since_calc,
+            end=end_ts,
+            app_log_counts={},
+            dag_log_counts={},
+        )
+        app_hf = compute_health_failure_timeline(
+            app_anoms,
+            [],
+            None,
+            start=since_calc,
+            end=end_ts,
+            app_log_counts=app_log_counts,
+            dag_log_counts=dag_log_counts,
+        )
         combined_hf = attach_signatures_to_timeline(combined_hf, window_minutes=sig_window_min)
+        infra_hf = attach_signatures_to_timeline(infra_hf, window_minutes=sig_window_min)
+        app_hf = attach_signatures_to_timeline(app_hf, window_minutes=sig_window_min)
         combined_hf = trim_rows_to_requested_window(combined_hf, since_req, end_ts)
+        infra_hf = trim_rows_to_requested_window(infra_hf, since_req, end_ts)
+        app_hf = trim_rows_to_requested_window(app_hf, since_req, end_ts)
         last_row = combined_hf[-1] if combined_hf else None
+
+        asset_health_timeline = compute_asset_health_statistical_with_contributors(
+            assets,
+            combined_anoms,
+            app_log_counts_by_host_ip=app_logs_by_host,
+            dag_log_counts_by_host_ip=dag_logs_by_host,
+            start=since_calc,
+            end=end_ts,
+            alpha=0.30,
+            top_n=3,
+        )
+        asset_health_timeline_infra = compute_asset_health_statistical_with_contributors(
+            assets,
+            infra_anoms,
+            app_log_counts_by_host_ip={},
+            dag_log_counts_by_host_ip={},
+            start=since_calc,
+            end=end_ts,
+            alpha=0.30,
+            top_n=3,
+        )
+        asset_health_timeline_app = compute_asset_health_statistical_with_contributors(
+            assets,
+            app_anoms,
+            app_log_counts_by_host_ip=app_logs_by_host,
+            dag_log_counts_by_host_ip=dag_logs_by_host,
+            start=since_calc,
+            end=end_ts,
+            alpha=0.30,
+            top_n=3,
+        )
 
         return {
             "keyword": keyword,
@@ -276,6 +371,17 @@ class SummaryService:
             "health_archetype_last": (last_row or {}).get("health_archetype"),
             "health_sequence_last": (last_row or {}).get("health_sequence"),
             "health_failure_timeline": combined_hf,
+            "asset_health_timeline": asset_health_timeline,
+            "infra_only": {
+                "cluster_health": cluster_score_from_timeline(infra_hf, window_minutes=sig_window_min, mode="p10"),
+                "health_failure_timeline": infra_hf,
+                "asset_health_timeline": asset_health_timeline_infra,
+            },
+            "app_only": {
+                "cluster_health": cluster_score_from_timeline(app_hf, window_minutes=sig_window_min, mode="p10"),
+                "health_failure_timeline": app_hf,
+                "asset_health_timeline": asset_health_timeline_app,
+            },
             "debug": {
                 "sig_window_minutes": sig_window_min,
                 "app_log_total": int(sum(app_log_counts.values())) if app_log_counts else 0,

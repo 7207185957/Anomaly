@@ -39,6 +39,7 @@ Benefits:
 
 - `POST /api/v1/auth/login`
 - `GET /api/v1/auth/me`
+- `POST /api/v1/incidents/open`
 - `POST /api/v1/summaries/combined`
 - `POST /api/v1/cluster/health`
 - `POST /api/v1/logs/query`
@@ -75,6 +76,9 @@ docker compose up -d
 ```
 
 Also keep booleans in `.env` unquoted (for example `LDAP_USE_SSL=false`, not `LDAP_USE_SSL="false"`).
+
+Incidents data source is backend-owned; frontend no longer reads Postgres directly.
+If incidents live in a separate DB from health/anomaly tables, set `INCIDENT_PG_*` variables.
 
 ## Cloud agent environment bootstrap
 

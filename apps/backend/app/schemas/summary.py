@@ -44,4 +44,7 @@ class ClusterHealthResponse(BaseModel):
     health_signature: dict[str, Any]
     health_failure_last: dict[str, Any] | None
     health_failure_timeline: list[dict[str, Any]]
+    asset_health_timeline: list[dict[str, Any]] = []
+    infra_only: dict[str, Any] = {}
+    app_only: dict[str, Any] = {}
 

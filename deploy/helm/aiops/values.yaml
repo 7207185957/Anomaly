@@ -19,6 +19,12 @@ backend:
     PG_PORT: "5432"
     PG_USER: postgres
     PG_DB: postgres
+    PG_CONNECT_TIMEOUT_SEC: "10"
+    INCIDENT_PG_HOST: ""
+    INCIDENT_PG_PORT: "5432"
+    INCIDENT_PG_USER: ""
+    INCIDENT_PG_DB: ""
+    INCIDENT_TEAM_NAME: WCS-DataOps-Tier2
     LOKI_URL: http://loki-read:3100/loki/api/v1/query_range
     OLLAMA_HOST: http://ollama:11434
     OLLAMA_MODEL: llama3.1:8b
@@ -42,6 +48,7 @@ backend:
   secretEnv:
     JWT_SECRET_KEY: change-me
     PG_PASSWORD: change-me
+    INCIDENT_PG_PASSWORD: ""
     LDAP_BIND_PASSWORD: change-me
     DEMO_PASSWORD: demo123
     MLFLOW_TRACKING_PASSWORD: ""

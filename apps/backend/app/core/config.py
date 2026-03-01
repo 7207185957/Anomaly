@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     pg_user: str = "postgres"
     pg_password: str = ""
     pg_db: str = "postgres"
+    pg_connect_timeout_sec: int = 10
+
+    incident_pg_host: str = ""
+    incident_pg_port: int = 5432
+    incident_pg_user: str = ""
+    incident_pg_password: str = ""
+    incident_pg_db: str = ""
+    incident_team_name: str = "WCS-DataOps-Tier2"
 
     loki_url: str = "http://localhost:3100/loki/api/v1/query_range"
 
@@ -91,6 +99,11 @@ class Settings(BaseSettings):
         "ldap_server",
         "ldap_base_dn",
         "ldap_bind_dn",
+        "incident_pg_host",
+        "incident_pg_user",
+        "incident_pg_password",
+        "incident_pg_db",
+        "incident_team_name",
         mode="before",
     )
     @classmethod

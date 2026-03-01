@@ -8,6 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.config import get_settings
 from app.core.security import decode_access_token
 from app.services.ldap_service import LdapAuthService
+from app.services.incidents_service import IncidentsService
 from app.services.loki_service import LokiService
 from app.services.nebula_service import NebulaService
 from app.services.summary_service import SummaryService
@@ -38,6 +39,10 @@ def get_loki_service() -> LokiService:
 
 def get_nebula_service() -> NebulaService:
     return NebulaService()
+
+
+def get_incidents_service() -> IncidentsService:
+    return IncidentsService()
 
 
 def require_auth(

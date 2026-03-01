@@ -25,6 +25,58 @@ def _clamp(x: float, lo: float, hi: float) -> float:
 
 
 class DemoDataService:
+    def _build_asset_timeline(
+        self,
+        *,
+        keyword: str,
+        start: datetime,
+        end: datetime,
+        mode: str,
+    ) -> list[dict[str, Any]]:
+        assets = self._build_mock_assets(keyword)
+        timeline: list[dict[str, Any]] = []
+        for idx, asset in enumerate(assets):
+            seed = _seed(f"{asset['asset_id']}:{mode}")
+            cur = start.replace(second=0, microsecond=0, tzinfo=timezone.utc)
+            health = 96.0 - (idx * 1.7)
+            while cur <= end:
+                drift = math.sin((cur.minute + seed % 11) / 9.0) * 2.3
+                penalty = 0.0
+                if mode == "combined":
+                    penalty = 4.0 if (cur.minute + idx) % 17 == 0 else 0.8
+                elif mode == "infra":
+                    penalty = 3.2 if (cur.minute + idx) % 19 == 0 else 0.5
+                elif mode == "app":
+                    penalty = 3.6 if (cur.minute + idx) % 13 == 0 else 0.6
+
+                health = max(35.0, min(100.0, 0.35 * (100.0 - penalty + drift) + 0.65 * health))
+                app_logs = int(max(0, round((75.0 - health) * 0.8)))
+                dag_logs = int(max(0, round((72.0 - health) * 0.6)))
+                contributors = [
+                    {
+                        "metric": "queue_depth" if mode != "infra" else "cpu_usage",
+                        "value": round(100.0 - health, 2),
+                        "severity": "high" if health < 70 else ("medium" if health < 82 else "low"),
+                        "count": 1 + int(health < 75),
+                        "instance": asset["asset_id"],
+                        "asset_id": asset["asset_id"],
+                    }
+                ]
+                timeline.append(
+                    {
+                        "asset_id": asset["asset_id"],
+                        "host_ip": asset.get("ip_address"),
+                        "minute": cur.isoformat(),
+                        "health_score": round(float(health), 2),
+                        "impact_total": round(float(100.0 - health), 2),
+                        "contributors": contributors,
+                        "app_log_errors": app_logs if mode in ("combined", "app") else 0,
+                        "dag_log_errors": dag_logs if mode in ("combined", "app") else 0,
+                    }
+                )
+                cur += timedelta(minutes=1)
+        return timeline
+
     def _build_timeline(
         self,
         *,
@@ -126,6 +178,9 @@ class DemoDataService:
         combined_hf = self._build_timeline(keyword=keyword, start=since_calc, end=end_ts, mode="combined")
         infra_hf = self._build_timeline(keyword=keyword, start=since_calc, end=end_ts, mode="infra")
         app_hf = self._build_timeline(keyword=keyword, start=since_calc, end=end_ts, mode="app")
+        combined_asset_timeline = self._build_asset_timeline(keyword=keyword, start=since_calc, end=end_ts, mode="combined")
+        infra_asset_timeline = self._build_asset_timeline(keyword=keyword, start=since_calc, end=end_ts, mode="infra")
+        app_asset_timeline = self._build_asset_timeline(keyword=keyword, start=since_calc, end=end_ts, mode="app")
 
         combined_hf = attach_signatures_to_timeline(combined_hf, window_minutes=sig_window_min)
         infra_hf = attach_signatures_to_timeline(infra_hf, window_minutes=sig_window_min)
@@ -222,10 +277,12 @@ class DemoDataService:
             "infra_only": {
                 "cluster_health": cluster_score_from_timeline(infra_trim, window_minutes=sig_window_min, mode="p10"),
                 "health_failure_timeline": infra_trim,
+                "asset_health_timeline": infra_asset_timeline,
             },
             "app_only": {
                 "cluster_health": cluster_score_from_timeline(app_trim, window_minutes=sig_window_min, mode="p10"),
                 "health_failure_timeline": app_trim,
+                "asset_health_timeline": app_asset_timeline,
             },
             "app_log_error_count": app_logs,
             "dag_log_error_count": dag_logs,
@@ -237,11 +294,70 @@ class DemoDataService:
             "cluster_health": cluster_score_from_timeline(combined_trim, window_minutes=sig_window_min, mode="p10"),
             "incident_timeline": incident_timeline,
             "health_failure_timeline": combined_trim,
+            "asset_health_timeline": combined_asset_timeline,
             "health_signature": signature_block_from_timeline(combined_trim, window_minutes=sig_window_min),
             "summary": "Demo mode summary generated from synthetic but realistic platform data.",
             "rca": self._build_rca_rows(keyword),
             "demo_mode": True,
         }
+
+    def list_incidents(
+        self,
+        *,
+        team_name: str | None,
+        keyword: str | None,
+        since: datetime,
+        end: datetime,
+        include_resolved: bool,
+    ) -> list[dict[str, Any]]:
+        base_time = end - timedelta(minutes=80)
+        rows = [
+            {
+                "incident_id": "INC-DEMO-201",
+                "title": "Airflow scheduler lag exceeded SLO",
+                "description": "Task queue latency crossed threshold and impacted SLA jobs.",
+                "severity": "high",
+                "status": "open",
+                "service_impacted": keyword or "airflow",
+                "team_name": team_name,
+                "start_time": (base_time + timedelta(minutes=5)).isoformat(),
+                "end_time": None,
+                "root_cause": None,
+            },
+            {
+                "incident_id": "INC-DEMO-202",
+                "title": "RabbitMQ queue depth spike",
+                "description": "Queue depth rapidly increased after deployment update.",
+                "severity": "medium",
+                "status": "open",
+                "service_impacted": keyword or "rabbitmq",
+                "team_name": team_name,
+                "start_time": (base_time + timedelta(minutes=25)).isoformat(),
+                "end_time": None,
+                "root_cause": None,
+            },
+            {
+                "incident_id": "INC-DEMO-203",
+                "title": "Worker memory pressure recovered",
+                "description": "Worker pod memory increased during batch but recovered.",
+                "severity": "low",
+                "status": "resolved",
+                "service_impacted": keyword or "airflow-worker",
+                "team_name": team_name,
+                "start_time": (base_time - timedelta(minutes=30)).isoformat(),
+                "end_time": (base_time - timedelta(minutes=5)).isoformat(),
+                "root_cause": "Burst workload",
+            },
+        ]
+        filtered = []
+        for row in rows:
+            st = datetime.fromisoformat(row["start_time"]).astimezone(timezone.utc)
+            if st < since or st > end:
+                continue
+            if not include_resolved and str(row.get("status", "")).lower() in {"resolved", "closed"}:
+                continue
+            filtered.append(row)
+        return filtered
 
     def get_cluster_health(self, req: SummaryRequest) -> dict[str, Any]:
         summary = self.get_combined_summary(req)
@@ -286,6 +402,9 @@ class DemoDataService:
             "health_archetype_last": (last or {}).get("health_archetype"),
             "health_sequence_last": (last or {}).get("health_sequence"),
             "health_failure_timeline": timeline,
+            "asset_health_timeline": summary.get("asset_health_timeline", []),
+            "infra_only": summary.get("infra_only", {}),
+            "app_only": summary.get("app_only", {}),
             "debug": {"demo_mode": True},
         }
 

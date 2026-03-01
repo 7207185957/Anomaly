@@ -11,6 +11,7 @@ import {
   JobSubmitResponse,
   LogsResponse,
   LoginResponse,
+  OpenIncidentsResponse,
   TimeWindowPayload,
   TopologyResponse,
 } from "@/types/api";
@@ -50,6 +51,27 @@ export const useCombinedSummary = (payload: TimeWindowPayload, enabled: boolean)
     enabled,
     queryFn: async () => {
       const { data } = await api.post<CombinedSummaryResponse>("/summaries/combined", payload);
+      return data;
+    },
+    refetchInterval: 30_000,
+  });
+
+export const useOpenIncidents = (
+  payload: {
+    keyword?: string;
+    lookback_hours?: number;
+    start_utc?: string;
+    end_utc?: string;
+    team_name?: string;
+    include_resolved?: boolean;
+  },
+  enabled: boolean,
+) =>
+  useQuery({
+    queryKey: ["incidents", "open", payload],
+    enabled,
+    queryFn: async () => {
+      const { data } = await api.post<OpenIncidentsResponse>("/incidents/open", payload);
       return data;
     },
     refetchInterval: 30_000,

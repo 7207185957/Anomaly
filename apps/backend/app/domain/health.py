@@ -685,3 +685,115 @@ def top_metrics_causing_dip(
         for metric, impact in ranked
     ]
 
+
+def compute_asset_health_statistical_with_contributors(
+    assets: list[dict[str, Any]],
+    anomalies: list[dict[str, Any]],
+    *,
+    app_log_counts_by_host_ip: dict[str, dict[datetime, int]] | None = None,
+    dag_log_counts_by_host_ip: dict[str, dict[datetime, int]] | None = None,
+    start: datetime | None = None,
+    end: datetime | None = None,
+    alpha: float = 0.30,
+    top_n: int = 3,
+) -> list[dict[str, Any]]:
+    def _to_utc_minute(ts: Any) -> datetime | None:
+        m = safe_parse_ts(ts)
+        if not m:
+            return None
+        return floor_to_minute(m)
+
+    end = _to_utc_minute(end) or floor_to_minute(datetime.now(timezone.utc))
+    start = _to_utc_minute(start) or (end - timedelta(minutes=15))
+    if end < start:
+        start, end = end, start
+
+    minutes: list[datetime] = []
+    cur = start
+    while cur <= end:
+        minutes.append(cur)
+        cur += timedelta(minutes=1)
+
+    asset_ids = [str(a.get("asset_id")) for a in assets or [] if a.get("asset_id")]
+    asset_to_host: dict[str, str | None] = {}
+    for a in assets or []:
+        aid = str(a.get("asset_id") or "").strip()
+        if not aid:
+            continue
+        host = str(a.get("ip_address") or "").strip() or None
+        asset_to_host[aid] = host
+
+    by_asset_minute: dict[tuple[str, datetime], list[dict[str, Any]]] = defaultdict(list)
+    for a in anomalies or []:
+        inst = str(a.get("instance") or "").strip()
+        ts = _to_utc_minute(a.get("timestamp") or a.get("ts"))
+        if not inst or ts is None or ts < start or ts > end:
+            continue
+        by_asset_minute[(inst, ts)].append(
+            {
+                "metric": a.get("metric") or a.get("metric_name") or "unknown_metric",
+                "value": a.get("value"),
+                "severity": str(a.get("severity") or "unknown").lower(),
+                "instance": inst,
+                "asset_id": inst,
+            }
+        )
+
+    sev_weight = {"low": 1.0, "medium": 3.0, "high": 8.0, "critical": 12.0}
+    LOG_APP_WEIGHT = 0.15
+    LOG_DAG_WEIGHT = 0.25
+    LOG_CAP = 30.0
+
+    out: list[dict[str, Any]] = []
+    app_log_counts_by_host_ip = app_log_counts_by_host_ip or {}
+    dag_log_counts_by_host_ip = dag_log_counts_by_host_ip or {}
+
+    for aid in asset_ids:
+        health = 100.0
+        host_ip = asset_to_host.get(aid)
+
+        for m in minutes:
+            contrib_raw = by_asset_minute.get((aid, m), [])
+            agg: dict[tuple[str, Any, str], int] = defaultdict(int)
+            for c in contrib_raw:
+                agg[(str(c["metric"]), c.get("value"), str(c["severity"]))] += 1
+
+            impact_total = 0.0
+            for (_, _, severity), count in agg.items():
+                impact_total += sev_weight.get(severity, 2.0) * count
+
+            app_log_errs = 0
+            dag_log_errs = 0
+            if host_ip:
+                app_log_errs = int((app_log_counts_by_host_ip.get(host_ip, {}) or {}).get(m, 0))
+                dag_log_errs = int((dag_log_counts_by_host_ip.get(host_ip, {}) or {}).get(m, 0))
+            impact_total += float(min(LOG_CAP, app_log_errs * LOG_APP_WEIGHT + dag_log_errs * LOG_DAG_WEIGHT))
+
+            today = max(0.0, min(100.0, 100.0 - impact_total))
+            health = alpha * today + (1 - alpha) * health
+            health = max(0.0, min(100.0, health))
+
+            top = sorted(
+                [
+                    {"metric": k[0], "value": k[1], "severity": k[2], "count": v, "instance": aid, "asset_id": aid}
+                    for k, v in agg.items()
+                ],
+                key=lambda x: sev_weight.get(str(x["severity"]), 2.0) * float(x["count"]),
+                reverse=True,
+            )[:top_n]
+
+            out.append(
+                {
+                    "asset_id": aid,
+                    "minute": m.isoformat(),
+                    "health_score": round(float(health), 2),
+                    "impact_total": round(float(impact_total), 2),
+                    "contributors": top,
+                    "host_ip": host_ip,
+                    "app_log_errors": int(app_log_errs),
+                    "dag_log_errors": int(dag_log_errs),
+                }
+            )
+
+    return out
+
