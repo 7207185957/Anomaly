@@ -40,6 +40,9 @@ cp .env.example .env
 - `docker compose`
 - `docker-compose`
 
+If Compose is missing or broken (for example `http+docker` Python docker-compose errors),
+the installer automatically falls back to plain `docker run` orchestration.
+
 ## Optional: offline dependency mirrors
 
 If you must rebuild in air-gap:
