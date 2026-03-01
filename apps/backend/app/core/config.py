@@ -1,4 +1,5 @@
 from functools import lru_cache
+import json
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -118,6 +119,35 @@ class Settings(BaseSettings):
             if not text.startswith("/"):
                 text = "/" + text
             return text
+        return value
+
+    @field_validator("cors_origins", mode="before")
+    @classmethod
+    def normalize_cors_origins(cls, value):
+        if value is None:
+            return ["http://localhost:3000"]
+        if isinstance(value, str):
+            text = value.strip()
+            if len(text) >= 2 and (
+                (text[0] == '"' and text[-1] == '"')
+                or (text[0] == "'" and text[-1] == "'")
+            ):
+                text = text[1:-1].strip()
+            if not text:
+                return []
+            try:
+                parsed = json.loads(text)
+                if isinstance(parsed, list):
+                    return [str(item).strip() for item in parsed if str(item).strip()]
+            except Exception:
+                pass
+            return [
+                part.strip().strip('"').strip("'")
+                for part in text.split(",")
+                if part.strip()
+            ]
+        if isinstance(value, list):
+            return [str(item).strip() for item in value if str(item).strip()]
         return value
 
 

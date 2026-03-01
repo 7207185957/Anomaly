@@ -38,12 +38,17 @@ export default function LoginPage() {
           <Typography variant="body2" sx={{ opacity: 0.8, mb: 3 }}>
             Authenticate using LDAP credentials.
           </Typography>
-          {authMode.data?.demo_mode ? (
+          {authMode.isError ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              Unable to reach backend <code>/auth/mode</code>. Check API URL, backend port mapping, and CORS.
+            </Alert>
+          ) : authMode.data?.demo_mode ? (
             <Alert severity="info" sx={{ mb: 2 }}>
               Backend is in Demo Mode. Demo username hint:{" "}
               <strong>{authMode.data.demo_username_hint || env.demoUsername}</strong>
             </Alert>
           ) : (
+            authMode.isSuccess &&
             env.demoMode && (
               <Alert severity="warning" sx={{ mb: 2 }}>
                 Frontend demo mode is enabled, but backend reports LDAP mode. Set{" "}
