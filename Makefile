@@ -15,3 +15,9 @@ compose-up:
 compose-down:
 	docker compose down -v
 
+cloud-bootstrap:
+	./scripts/cloud-agent-bootstrap.sh
+
+cloud-verify:
+	./scripts/cloud-agent-verify.sh
+

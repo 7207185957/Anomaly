@@ -57,6 +57,20 @@ Services:
 - Frontend: http://localhost:3000
 - Backend: http://localhost:9001
 
+## Cloud agent environment bootstrap
+
+Use these scripts in cloud/onboarding setup so dependencies are preinstalled once:
+
+```bash
+./scripts/cloud-agent-bootstrap.sh
+./scripts/cloud-agent-verify.sh
+```
+
+What this preinstalls:
+- backend Python deps from `apps/backend/pyproject.toml` (including `[dev]`)
+- frontend npm deps from `apps/frontend/package-lock.json`
+- validates lint/build/test readiness for both demo and normal mode
+
 ## Demo mode (Option 2)
 
 Set these in `.env`:
