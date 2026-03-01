@@ -36,6 +36,10 @@ cp .env.example .env
 ./install-offline.sh
 ```
 
+`install-offline.sh` auto-detects Compose command and supports both:
+- `docker compose`
+- `docker-compose`
+
 ## Optional: offline dependency mirrors
 
 If you must rebuild in air-gap:

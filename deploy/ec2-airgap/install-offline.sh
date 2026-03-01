@@ -26,6 +26,16 @@ if [[ ! -f "${SCRIPT_DIR}/.env" ]]; then
   echo "Created .env from template. Please edit secrets and re-run if needed."
 fi
 
-docker compose -f "${SCRIPT_DIR}/docker-compose.yml" up -d
-docker compose -f "${SCRIPT_DIR}/docker-compose.yml" ps
+if docker compose version >/dev/null 2>&1; then
+  COMPOSE_CMD=(docker compose)
+elif command -v docker-compose >/dev/null 2>&1; then
+  COMPOSE_CMD=(docker-compose)
+else
+  echo "ERROR: Neither 'docker compose' plugin nor 'docker-compose' binary is available."
+  echo "Install one of them and re-run this script."
+  exit 1
+fi
+
+"${COMPOSE_CMD[@]}" -f "${SCRIPT_DIR}/docker-compose.yml" up -d
+"${COMPOSE_CMD[@]}" -f "${SCRIPT_DIR}/docker-compose.yml" ps
 
