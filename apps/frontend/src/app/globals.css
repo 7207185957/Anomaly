@@ -7,8 +7,16 @@ body {
   padding: 0;
   width: 100%;
   height: 100%;
+  background: radial-gradient(circle at 20% 0%, #102947 0%, #0b1220 44%, #090d16 100%);
+  color: #e5e7eb;
+  font-feature-settings: "cv11", "ss01";
+  text-rendering: optimizeLegibility;
 }
 
 * {
   box-sizing: border-box;
+}
+
+#__next {
+  min-height: 100%;
 }

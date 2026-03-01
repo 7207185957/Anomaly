@@ -57,7 +57,14 @@ export function AppShell({
   username,
 }: AppShellProps) {
   return (
-    <Box sx={{ display: "flex", minHeight: "100vh" }}>
+    <Box
+      sx={{
+        display: "flex",
+        minHeight: "100vh",
+        background:
+          "radial-gradient(circle at 8% 0%, rgba(12,74,110,0.35) 0%, rgba(9,13,22,0) 35%), radial-gradient(circle at 90% 0%, rgba(8,145,178,0.2) 0%, rgba(9,13,22,0) 40%)",
+      }}
+    >
       <AppBar
         position="fixed"
         sx={{
@@ -109,7 +116,7 @@ export function AppShell({
       </Drawer>
       <Box component="main" sx={{ flexGrow: 1, p: 3 }}>
         <Toolbar />
-        {children}
+        <Box sx={{ maxWidth: "1800px", mx: "auto" }}>{children}</Box>
       </Box>
     </Box>
   );
