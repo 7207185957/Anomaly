@@ -29,5 +29,7 @@ def summarize_incident(
     service: IncidentsService = Depends(get_incidents_service),
 ) -> IncidentSummaryResponse:
     payload = service.summarize_incident(req)
+    if payload.get("incident_id") is not None:
+        payload["incident_id"] = str(payload["incident_id"])
     return IncidentSummaryResponse(**payload)
 

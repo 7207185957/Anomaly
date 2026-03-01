@@ -66,9 +66,18 @@ class IncidentsService:
         }
 
     @staticmethod
+    def _as_str_or_none(value: Any) -> str | None:
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    @staticmethod
     def _normalized_incident(incident: dict[str, Any]) -> dict[str, Any]:
         return {
-            "incident_id": incident.get("incident_id") or incident.get("incidentnumber") or incident.get("id"),
+            "incident_id": IncidentsService._as_str_or_none(
+                incident.get("incident_id") or incident.get("incidentnumber") or incident.get("id")
+            ),
             "title": incident.get("title") or incident.get("entitydisplayname") or "Incident",
             "description": incident.get("description") or incident.get("details") or "",
             "severity": incident.get("severity") or "unknown",

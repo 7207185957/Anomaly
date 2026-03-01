@@ -32,7 +32,7 @@ class _FakeIncidentsService:
         incident = req.incident or {}
         title = str(incident.get("title") or "Synthetic incident")
         return {
-            "incident_id": incident.get("incident_id", "INC-1"),
+            "incident_id": incident.get("incident_id", 394921),
             "title": title,
             "executive_summary": "Incident Summary:\nSynthetic incident",
             "incident_summary": f"{title} summary.",
@@ -76,7 +76,7 @@ def test_summarize_incident_endpoint():
         "/api/v1/incidents/summarize",
         json={
             "incident": {
-                "incident_id": "INC-1",
+                "incident_id": 394921,
                 "title": "Synthetic incident",
                 "severity": "high",
                 "status": "open",
@@ -88,7 +88,7 @@ def test_summarize_incident_endpoint():
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["incident_id"] == "INC-1"
+    assert payload["incident_id"] == "394921"
     assert "executive_summary" in payload
     assert payload["generated_by"] in {"heuristic", "llm"}
 
