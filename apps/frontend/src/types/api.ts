@@ -108,6 +108,17 @@ export type OpenIncidentsResponse = {
   };
 };
 
+export type IncidentSummaryResponse = {
+  incident_id?: string | null;
+  title: string;
+  executive_summary: string;
+  incident_summary: string;
+  probable_cause: string;
+  recommended_fix: string;
+  generated_by: string;
+  generated_at_utc?: string;
+};
+
 export type LogsResponse = {
   rows: Array<Record<string, unknown>>;
   total: number;

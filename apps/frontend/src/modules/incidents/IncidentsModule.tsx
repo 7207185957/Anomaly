@@ -1,11 +1,21 @@
 "use client";
 
-import { useMemo } from "react";
-import { Alert, Box, Card, CardContent, CircularProgress, Grid, Stack, Typography } from "@mui/material";
+import { useMemo, useState } from "react";
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  CircularProgress,
+  Grid,
+  Stack,
+  Typography,
+} from "@mui/material";
 import { AgGridReact } from "ag-grid-react";
 import { ColDef } from "ag-grid-community";
 
-import { useCombinedSummary, useOpenIncidents } from "@/hooks/useAIOpsApi";
+import { useCombinedSummary, useIncidentSummary, useOpenIncidents } from "@/hooks/useAIOpsApi";
 import { TimeWindowPayload } from "@/types/api";
 
 type Props = {
@@ -30,6 +40,7 @@ function minuteLabel(value: unknown): string {
 }
 
 export function IncidentsModule({ payload, enabled }: Props) {
+  const [selectedIncidentId, setSelectedIncidentId] = useState<string | null>(null);
   const incidentsQuery = useOpenIncidents(
     {
       include_resolved: false,
@@ -37,6 +48,7 @@ export function IncidentsModule({ payload, enabled }: Props) {
     enabled,
   );
   const query = useCombinedSummary(payload, enabled && Boolean(payload.keyword));
+  const summaryMutation = useIncidentSummary();
 
   const colDefs = useMemo<ColDef[]>(
     () => [
@@ -77,6 +89,10 @@ export function IncidentsModule({ payload, enabled }: Props) {
   const data = query.data;
   const rcaRows = Array.isArray(data?.rca) ? data?.rca : [];
   const incidentRows = Array.isArray(incidentData.incidents) ? incidentData.incidents : [];
+  const selectedIncident =
+    incidentRows.find((row) => String(row.incident_id || "") === String(selectedIncidentId || "")) ??
+    incidentRows[0] ??
+    null;
   const highlightRows = [...incidentRows]
     .sort((a, b) => {
       const sevCmp = severityRank(b.severity) - severityRank(a.severity);
@@ -97,6 +113,16 @@ export function IncidentsModule({ payload, enabled }: Props) {
   const topServices = Object.entries(byService)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 5);
+
+  const runSummary = (incident: Record<string, unknown>) => {
+    summaryMutation.mutate({
+      incident,
+      context: {
+        keyword: payload.keyword || null,
+        lookback_hours: payload.lookback_hours ?? null,
+      },
+    });
+  };
 
   return (
     <Grid container spacing={2}>
@@ -142,7 +168,17 @@ export function IncidentsModule({ payload, enabled }: Props) {
               Incident data is intentionally independent of keyword and time-window filters.
             </Alert>
             <div className="ag-theme-alpine-dark" style={{ height: 370, width: "100%" }}>
-              <AgGridReact rowData={incidentRows} columnDefs={incidentCols} />
+              <AgGridReact
+                rowData={incidentRows}
+                columnDefs={incidentCols}
+                rowSelection="single"
+                onRowClicked={(event) => {
+                  const incident = event.data as Record<string, unknown>;
+                  const incidentId = String(incident.incident_id || "");
+                  setSelectedIncidentId(incidentId || null);
+                  runSummary(incident);
+                }}
+              />
             </div>
           </CardContent>
         </Card>
@@ -207,6 +243,96 @@ export function IncidentsModule({ payload, enabled }: Props) {
                 <Typography variant="body2">No service data</Typography>
               )}
             </Stack>
+          </CardContent>
+        </Card>
+      </Grid>
+      <Grid size={12}>
+        <Card
+          sx={{
+            border: "1px solid rgba(255,171,0,0.48)",
+            background: "linear-gradient(145deg, rgba(6,10,16,0.96) 0%, rgba(10,10,10,0.94) 100%)",
+          }}
+        >
+          <CardContent>
+            <Stack
+              direction={{ xs: "column", md: "row" }}
+              justifyContent="space-between"
+              alignItems={{ md: "center" }}
+              spacing={1}
+              sx={{ mb: 1 }}
+            >
+              <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                Executive Summary
+              </Typography>
+              <Stack direction="row" spacing={1} alignItems="center">
+                {selectedIncident ? (
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                    Selected incident: {String(selectedIncident.title || selectedIncident.incident_id || "n/a")}
+                  </Typography>
+                ) : (
+                  <Typography variant="body2" sx={{ opacity: 0.8 }}>
+                    Click an incident row to generate summary
+                  </Typography>
+                )}
+                <Button
+                  variant="contained"
+                  size="small"
+                  disabled={!selectedIncident || summaryMutation.isPending}
+                  onClick={() => selectedIncident && runSummary(selectedIncident)}
+                >
+                  {summaryMutation.isPending ? "Generating..." : "Generate Summary"}
+                </Button>
+              </Stack>
+            </Stack>
+
+            {summaryMutation.isPending && (
+              <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                <CircularProgress size={18} />
+                <Typography variant="body2">Generating LLM executive summary...</Typography>
+              </Stack>
+            )}
+
+            {summaryMutation.isError && (
+              <Alert severity="error" sx={{ mb: 1 }}>
+                Failed to generate summary for selected incident.
+              </Alert>
+            )}
+
+            {summaryMutation.data ? (
+              <Box
+                sx={{
+                  borderLeft: "6px solid #FFAB00",
+                  borderRadius: 1.4,
+                  p: 2,
+                  background: "rgba(0,0,0,0.36)",
+                }}
+              >
+                <Typography variant="h6" sx={{ color: "#FFB74D", mb: 0.6 }}>
+                  Incident Summary:
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: "pre-line", mb: 2.1 }}>
+                  {summaryMutation.data.incident_summary}
+                </Typography>
+
+                <Typography variant="h6" sx={{ color: "#FFB74D", mb: 0.6 }}>
+                  Most Probable Cause (Change Requests / Changes in timeframe):
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: "pre-line", mb: 2.1 }}>
+                  {summaryMutation.data.probable_cause}
+                </Typography>
+
+                <Typography variant="h6" sx={{ color: "#FFB74D", mb: 0.6 }}>
+                  Recommended Fix:
+                </Typography>
+                <Typography variant="body1" sx={{ whiteSpace: "pre-line" }}>
+                  {summaryMutation.data.recommended_fix}
+                </Typography>
+              </Box>
+            ) : (
+              <Alert severity="info">
+                Select an incident from the table to auto-generate an executive summary via LLM.
+              </Alert>
+            )}
           </CardContent>
         </Card>
       </Grid>

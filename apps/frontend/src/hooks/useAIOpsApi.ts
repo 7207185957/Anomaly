@@ -7,6 +7,7 @@ import {
   AuthModeResponse,
   ClusterHealthResponse,
   CombinedSummaryResponse,
+  IncidentSummaryResponse,
   JobStatusResponse,
   JobSubmitResponse,
   LogsResponse,
@@ -75,6 +76,14 @@ export const useOpenIncidents = (
       return data;
     },
     refetchInterval: 30_000,
+  });
+
+export const useIncidentSummary = () =>
+  useMutation({
+    mutationFn: async (payload: { incident: Record<string, unknown>; context?: Record<string, unknown> }) => {
+      const { data } = await api.post<IncidentSummaryResponse>("/incidents/summarize", payload);
+      return data;
+    },
   });
 
 export const useClusterHealth = (payload: TimeWindowPayload, enabled: boolean) =>

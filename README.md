@@ -40,6 +40,7 @@ Benefits:
 - `POST /api/v1/auth/login`
 - `GET /api/v1/auth/me`
 - `POST /api/v1/incidents/open`
+- `POST /api/v1/incidents/summarize`
 - `POST /api/v1/summaries/combined`
 - `POST /api/v1/cluster/health`
 - `POST /api/v1/logs/query`

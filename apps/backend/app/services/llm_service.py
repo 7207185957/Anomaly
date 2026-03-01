@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import defaultdict
 from typing import Any
 
@@ -8,6 +9,32 @@ from ollama import Client
 
 from app.core.config import get_settings
 from app.services.ollama_mlflow_wrapper import configure_mlflow, ollama_chat_with_mlflow
+
+
+def _parse_json_object(text: str) -> dict[str, Any] | None:
+    raw = (text or "").strip()
+    if not raw:
+        return None
+    fenced = re.search(r"```(?:json)?\s*(\{.*\})\s*```", raw, flags=re.DOTALL | re.IGNORECASE)
+    if fenced:
+        raw = fenced.group(1).strip()
+    try:
+        parsed = json.loads(raw)
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception:
+        pass
+    first = raw.find("{")
+    last = raw.rfind("}")
+    if first >= 0 and last > first:
+        snippet = raw[first : last + 1]
+        try:
+            parsed = json.loads(snippet)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            return None
+    return None
 
 
 class LlmService:
@@ -124,4 +151,60 @@ DATA:
             log_dataset=True,
         )
         return result.get("content", "")
+
+    def generate_incident_executive_summary(
+        self,
+        *,
+        incident: dict[str, Any],
+        context: dict[str, Any] | None = None,
+    ) -> dict[str, str]:
+        context = context or {}
+        prompt = f"""
+You are an SRE incident commander.
+Return JSON only with exactly these keys:
+{{
+  "executive_summary": "<2-4 short lines>",
+  "incident_summary": "<what happened, impact, current status>",
+  "probable_cause": "<most probable cause based on given incident + context>",
+  "recommended_fix": "<next concrete remediation and validation actions>"
+}}
+
+Rules:
+- Do not invent unavailable facts.
+- If evidence is missing, explicitly say "insufficient evidence".
+- Keep each field concise and action-oriented.
+
+INCIDENT:
+{json.dumps(incident, default=str, ensure_ascii=False)}
+
+CONTEXT:
+{json.dumps(context, default=str, ensure_ascii=False)}
+""".strip()
+        result = ollama_chat_with_mlflow(
+            client=self.client,
+            model=self.settings.ollama_model,
+            messages=[{"role": "user", "content": prompt}],
+            options={"temperature": 0.15, "num_predict": 420, "seed": 42},
+            run_name="incident_executive_summary",
+            tags={"service": "aiops", "fn": "incident_executive_summary"},
+            log_dataset=True,
+            dataset_name="incident_summary_inputs",
+        )
+        content = result.get("content", "")
+        parsed = _parse_json_object(content)
+        if parsed:
+            return {
+                "executive_summary": str(parsed.get("executive_summary") or "").strip(),
+                "incident_summary": str(parsed.get("incident_summary") or "").strip(),
+                "probable_cause": str(parsed.get("probable_cause") or "").strip(),
+                "recommended_fix": str(parsed.get("recommended_fix") or "").strip(),
+            }
+        # Fallback if the model doesn't return strict JSON.
+        plain = (content or "").strip() or "insufficient evidence"
+        return {
+            "executive_summary": plain,
+            "incident_summary": plain,
+            "probable_cause": "insufficient evidence",
+            "recommended_fix": "Collect additional incident context and rerun summary generation.",
+        }
 

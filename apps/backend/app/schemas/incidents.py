@@ -23,3 +23,19 @@ class IncidentsResponse(BaseModel):
     summary: dict[str, Any]
     generated_at_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+
+class IncidentSummaryRequest(BaseModel):
+    incident: dict[str, Any]
+    context: dict[str, Any] = Field(default_factory=dict)
+
+
+class IncidentSummaryResponse(BaseModel):
+    incident_id: str | None = None
+    title: str
+    executive_summary: str
+    incident_summary: str
+    probable_cause: str
+    recommended_fix: str
+    generated_by: str
+    generated_at_utc: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+

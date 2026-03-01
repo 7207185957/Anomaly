@@ -28,6 +28,19 @@ class _FakeIncidentsService:
             },
         }
 
+    def summarize_incident(self, req):  # noqa: ANN001
+        incident = req.incident or {}
+        title = str(incident.get("title") or "Synthetic incident")
+        return {
+            "incident_id": incident.get("incident_id", "INC-1"),
+            "title": title,
+            "executive_summary": "Incident Summary:\nSynthetic incident",
+            "incident_summary": f"{title} summary.",
+            "probable_cause": "Synthetic cause.",
+            "recommended_fix": "Synthetic fix.",
+            "generated_by": "heuristic",
+        }
+
 
 def _fake_auth():
     return deps.AuthContext(
@@ -53,4 +66,29 @@ def test_open_incidents_endpoint():
     assert payload["count"] == 1
     assert payload["summary"]["open_count"] == 1
     assert payload["incidents"][0]["incident_id"] == "INC-1"
+
+
+def test_summarize_incident_endpoint():
+    app.dependency_overrides[deps.require_auth] = _fake_auth
+    app.dependency_overrides[deps.get_incidents_service] = lambda: _FakeIncidentsService()
+    client = TestClient(app)
+    response = client.post(
+        "/api/v1/incidents/summarize",
+        json={
+            "incident": {
+                "incident_id": "INC-1",
+                "title": "Synthetic incident",
+                "severity": "high",
+                "status": "open",
+            },
+            "context": {"keyword": "airflow"},
+        },
+    )
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["incident_id"] == "INC-1"
+    assert "executive_summary" in payload
+    assert payload["generated_by"] in {"heuristic", "llm"}
 
