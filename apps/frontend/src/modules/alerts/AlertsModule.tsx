@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   Alert,
+  Box,
   Card,
   CardContent,
   Chip,
@@ -56,6 +57,13 @@ const alertReason = (row: Record<string, unknown>) => {
   return reasons.length ? reasons.join(", ") : "informational";
 };
 
+const minuteLabel = (minuteValue: unknown) => {
+  const raw = String(minuteValue || "");
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw || "n/a";
+  return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)} UTC`;
+};
+
 export function AlertsModule({ payload, enabled }: Props) {
   const [onlyUnhealthy, setOnlyUnhealthy] = useState(false);
   const query = useClusterHealth(payload, enabled);
@@ -93,19 +101,67 @@ export function AlertsModule({ payload, enabled }: Props) {
   const maxRisk = alertTimeline.length
     ? Math.max(...alertTimeline.map((row) => Number(row.risk ?? 0)))
     : 0;
+  const topAlertRows = [...unhealthyRows]
+    .sort((a, b) => {
+      const aScore =
+        Number(a.failure ?? 0) * 1.2 +
+        Number(a.risk ?? 0) * 1.1 +
+        Number(a.infra_anomalies ?? 0) * 4 +
+        Number(a.app_anomalies ?? 0) * 4 +
+        Number(a.app_log_errors ?? 0) * 0.8 +
+        Number(a.dag_log_errors ?? 0) * 0.8;
+      const bScore =
+        Number(b.failure ?? 0) * 1.2 +
+        Number(b.risk ?? 0) * 1.1 +
+        Number(b.infra_anomalies ?? 0) * 4 +
+        Number(b.app_anomalies ?? 0) * 4 +
+        Number(b.app_log_errors ?? 0) * 0.8 +
+        Number(b.dag_log_errors ?? 0) * 0.8;
+      return bScore - aScore;
+    })
+    .slice(0, 6);
 
   return (
-    <Card sx={{ height: 560 }}>
+    <Card sx={{ height: 720 }}>
       <CardContent sx={{ height: "100%" }}>
         <Stack direction={{ xs: "column", md: "row" }} spacing={1} sx={{ mb: 1.2 }} alignItems={{ md: "center" }}>
           <Typography variant="h6">
-          Alerts Explorer
+            Alerts Explorer
           </Typography>
           <Chip label={`Total rows: ${alertTimeline.length}`} size="small" />
           <Chip label={`Alerting rows: ${unhealthyRows.length}`} size="small" color="warning" />
           <Chip label={`Max failure: ${Math.round(maxFailure)}`} size="small" />
           <Chip label={`Max risk: ${Math.round(maxRisk)}`} size="small" />
         </Stack>
+        <Box
+          sx={{
+            mb: 1.2,
+            p: 1.1,
+            borderRadius: 1.5,
+            border: "1px solid rgba(148,163,184,0.22)",
+            background: "linear-gradient(135deg, rgba(11,18,32,0.75) 0%, rgba(17,24,39,0.82) 100%)",
+          }}
+        >
+          <Typography variant="subtitle2" sx={{ mb: 0.6 }}>
+            Active Alert Insights
+          </Typography>
+          {topAlertRows.length ? (
+            <Stack spacing={0.55}>
+              {topAlertRows.map((row, idx) => (
+                <Typography key={`${row.minute}-${idx}`} variant="body2">
+                  <strong>#{idx + 1}</strong> {minuteLabel(row.minute)} |{" "}
+                  {String(row.alert_reason || "informational")} | health={Number(row.health ?? 0).toFixed(1)} |{" "}
+                  failure={Number(row.failure ?? 0).toFixed(1)} | risk={Number(row.risk ?? 0).toFixed(1)} | infra=
+                  {Number(row.infra_anomalies ?? 0)} | app={Number(row.app_anomalies ?? 0)}
+                </Typography>
+              ))}
+            </Stack>
+          ) : (
+            <Typography variant="body2" sx={{ opacity: 0.82 }}>
+              No active alerts in this slice.
+            </Typography>
+          )}
+        </Box>
         <FormControlLabel
           control={
             <Switch checked={onlyUnhealthy} onChange={(e) => setOnlyUnhealthy(e.target.checked)} />
@@ -118,7 +174,7 @@ export function AlertsModule({ payload, enabled }: Props) {
             No active alert rows for current data slice. Turn off the filter to inspect the full timeline.
           </Alert>
         )}
-        <div className="ag-theme-alpine-dark" style={{ height: 460, width: "100%" }}>
+        <div className="ag-theme-alpine-dark" style={{ height: 470, width: "100%" }}>
           <AgGridReact rowData={rows} columnDefs={colDefs} />
         </div>
       </CardContent>

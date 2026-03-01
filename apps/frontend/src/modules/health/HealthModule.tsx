@@ -103,6 +103,10 @@ function buildHealthOption(rows: TimelineRow[], title: string) {
     title: { text: title, top: 6, textStyle: { color: "#CFD8DC", fontSize: 14, fontWeight: 600 } },
     tooltip: {
       trigger: "axis",
+      appendToBody: true,
+      confine: false,
+      enterable: true,
+      extraCssText: "max-width: 560px; white-space: normal; overflow-wrap:anywhere; z-index: 99999;",
       backgroundColor: "rgba(7, 12, 20, 0.95)",
       borderColor: "rgba(144, 202, 249, 0.35)",
       formatter: (params: unknown) => {
@@ -218,6 +222,10 @@ function buildAssetOption(rows: AssetRow[], title: string, manySeries: boolean) 
     title: { text: title, top: 6, textStyle: { color: "#CFD8DC", fontSize: 14, fontWeight: 600 } },
     tooltip: {
       trigger: "axis",
+      appendToBody: true,
+      confine: false,
+      enterable: true,
+      extraCssText: "max-width: 640px; white-space: normal; overflow-wrap:anywhere; z-index: 99999;",
       backgroundColor: "rgba(7, 12, 20, 0.95)",
       borderColor: "rgba(144, 202, 249, 0.35)",
       formatter: (params: unknown) => {
@@ -411,7 +419,7 @@ export function HealthModule({ payload, enabled }: Props) {
         </Card>
       </Grid>
       <Grid size={12}>
-        <Card sx={{ overflow: "hidden" }}>
+        <Card sx={{ overflow: "visible" }}>
           <CardContent>
             <Stack
               direction={{ xs: "column", lg: "row" }}
@@ -461,7 +469,7 @@ export function HealthModule({ payload, enabled }: Props) {
         </Card>
       </Grid>
       <Grid size={12}>
-        <Card sx={{ overflow: "hidden" }}>
+        <Card sx={{ overflow: "visible" }}>
           <CardContent>
             <ReactECharts option={assetOption} style={{ height: assetChartHeight, width: "100%" }} />
           </CardContent>
