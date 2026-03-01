@@ -6,11 +6,19 @@ import {
   Box,
   Card,
   CardContent,
+  Checkbox,
   Chip,
   CircularProgress,
   FormControlLabel,
+  Paper,
   Stack,
   Switch,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
   Typography,
 } from "@mui/material";
 import { AgGridReact } from "ag-grid-react";
@@ -64,8 +72,23 @@ const minuteLabel = (minuteValue: unknown) => {
   return `${d.toISOString().slice(0, 10)} ${d.toISOString().slice(11, 16)} UTC`;
 };
 
+const bucketUtcLabel = (minuteValue: unknown) => {
+  const raw = String(minuteValue || "");
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw || "n/a";
+  return d.toISOString().replace("Z", "+00:00");
+};
+
+const xTimeLabel = (minuteValue: unknown) => {
+  const raw = String(minuteValue || "");
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return raw || "n/a";
+  return d.toISOString().slice(0, 19).replace("T", " ");
+};
+
 export function AlertsModule({ payload, enabled }: Props) {
   const [onlyUnhealthy, setOnlyUnhealthy] = useState(false);
+  const [selectedBuckets, setSelectedBuckets] = useState<string[]>([]);
   const query = useClusterHealth(payload, enabled);
 
   const colDefs = useMemo<ColDef[]>(
@@ -84,22 +107,6 @@ export function AlertsModule({ payload, enabled }: Props) {
     ],
     [],
   );
-  const archetypeCols = useMemo<ColDef[]>(
-    () => [
-      { field: "bucket_utc", headerName: "bucket_utc", minWidth: 250, flex: 1 },
-      { field: "x_time", headerName: "x_time", minWidth: 170, flex: 1 },
-      { field: "health_archetype", headerName: "health_archetype", minWidth: 220, flex: 1 },
-      { field: "health_sequence", headerName: "health_sequence", minWidth: 220, flex: 1 },
-      {
-        headerName: "Select",
-        checkboxSelection: true,
-        headerCheckboxSelection: true,
-        width: 110,
-      },
-    ],
-    [],
-  );
-
   if (!enabled) {
     return <Alert severity="info">Alerts are disabled until authentication is complete.</Alert>;
   }
@@ -117,8 +124,8 @@ export function AlertsModule({ payload, enabled }: Props) {
     ? Math.max(...alertTimeline.map((row) => Number(row.risk ?? 0)))
     : 0;
   const archetypeRows = alertTimeline.map((row) => ({
-    bucket_utc: row.minute,
-    x_time: minuteLabel(row.minute),
+    bucket_utc: bucketUtcLabel(row.minute),
+    x_time: xTimeLabel(row.minute),
     health_archetype: row.health_archetype || "UNKNOWN",
     health_sequence: row.health_sequence || "N/A",
   }));
@@ -141,6 +148,12 @@ export function AlertsModule({ payload, enabled }: Props) {
       return bScore - aScore;
     })
     .slice(0, 6);
+  const toggleBucket = (bucketUtc: string) => {
+    setSelectedBuckets((prev) =>
+      prev.includes(bucketUtc) ? prev.filter((x) => x !== bucketUtc) : [...prev, bucketUtc],
+    );
+  };
+  const debugInfo = query.data.debug || {};
 
   return (
     <Stack spacing={2}>
@@ -207,14 +220,56 @@ export function AlertsModule({ payload, enabled }: Props) {
           <Typography variant="h5" sx={{ mb: 1.2 }}>
             Archetypes + sequences over time
           </Typography>
-          <div className="ag-theme-alpine-dark" style={{ height: 390, width: "100%" }}>
-            <AgGridReact
-              rowData={archetypeRows}
-              columnDefs={archetypeCols}
-              rowSelection="multiple"
-              suppressRowClickSelection
-            />
-          </div>
+          <Alert severity="info" sx={{ mb: 1.2 }}>
+            Logic (same as Streamlit): health sequence is derived from rolling 15-minute health symbols (A-E), and
+            health archetype is classified from sequence pattern transitions (stable, degrading, recovered, flapping).
+          </Alert>
+          {archetypeRows.length ? (
+            <TableContainer
+              component={Paper}
+              sx={{
+                maxHeight: 330,
+                background: "transparent",
+                border: "1px solid rgba(148,163,184,0.25)",
+              }}
+            >
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>bucket_utc</TableCell>
+                    <TableCell>x_time</TableCell>
+                    <TableCell>health_archetype</TableCell>
+                    <TableCell>health_sequence</TableCell>
+                    <TableCell width={90}>Select</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {archetypeRows.map((row) => (
+                    <TableRow key={row.bucket_utc} hover selected={selectedBuckets.includes(row.bucket_utc)}>
+                      <TableCell>{row.bucket_utc}</TableCell>
+                      <TableCell>{row.x_time}</TableCell>
+                      <TableCell>{row.health_archetype}</TableCell>
+                      <TableCell>{row.health_sequence}</TableCell>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedBuckets.includes(row.bucket_utc)}
+                          onChange={() => toggleBucket(row.bucket_utc)}
+                          size="small"
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          ) : (
+            <Alert severity="warning">
+              No archetype rows were returned by cluster health timeline. Debug: combined_anomaly_count=
+              {String(debugInfo.combined_anomaly_count ?? "n/a")}, app_log_total=
+              {String(debugInfo.app_log_total ?? "n/a")}, dag_log_total=
+              {String(debugInfo.dag_log_total ?? "n/a")}.
+            </Alert>
+          )}
         </CardContent>
       </Card>
     </Stack>

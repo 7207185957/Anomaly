@@ -51,6 +51,7 @@ export type ClusterHealthResponse = {
     asset_health_timeline?: Array<Record<string, unknown>>;
   };
   counts: Record<string, number | string>;
+  debug?: Record<string, unknown>;
 };
 
 export type CombinedSummaryResponse = {
