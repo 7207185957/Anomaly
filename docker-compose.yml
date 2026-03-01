@@ -14,7 +14,7 @@ services:
     env_file:
       - .env
     ports:
-      - "9001:9001"
+      - "${BACKEND_HOST_PORT:-9001}:9001"
     depends_on:
       - redis
 
@@ -39,7 +39,7 @@ services:
       - NEXT_PUBLIC_DEMO_USERNAME=${NEXT_PUBLIC_DEMO_USERNAME:-demo}
       - NEXT_PUBLIC_DEMO_PASSWORD=${NEXT_PUBLIC_DEMO_PASSWORD:-demo123}
     ports:
-      - "3000:3000"
+      - "${FRONTEND_HOST_PORT:-3000}:3000"
     depends_on:
       - backend
 

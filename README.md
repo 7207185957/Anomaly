@@ -58,6 +58,14 @@ Services:
 - Backend: http://localhost:9001
 - Redis is internal-only in Docker network (no host 6379 bind by default)
 
+If host ports are already in use, set in `.env`:
+
+```bash
+FRONTEND_HOST_PORT=3001
+BACKEND_HOST_PORT=9002
+NEXT_PUBLIC_API_BASE_URL=http://localhost:9002/api/v1
+```
+
 ## Cloud agent environment bootstrap
 
 Use these scripts in cloud/onboarding setup so dependencies are preinstalled once:
